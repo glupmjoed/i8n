@@ -4,3 +4,5 @@
 build/
 content/
 img/
+ticketd/gen/
+ticketd/done/
