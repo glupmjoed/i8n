@@ -20,7 +20,7 @@ var (
 	idResponse chan error
 )
 
-func createID() {
+func createIDs() {
 	for {
 		_ = <-idRequest
 		exists, err := ioutil.ReadDir(exDir)
