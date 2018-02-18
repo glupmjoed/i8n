@@ -22,6 +22,11 @@ const (
 	minAmount = 5
 	maxAmount = 10000
 	baseURL   = "/"
+	tmplDir   = "../"
+)
+
+var (
+	orderTmpl *template.Template
 )
 
 func main() {
@@ -31,6 +36,8 @@ func main() {
 	if _, err := strconv.ParseUint(port, 10, 16); err != nil {
 		log.Fatal("Please provide a valid port number (1st argument)")
 	}
+
+	orderTmpl = template.Must(template.ParseFiles(tmplDir + "order.html"))
 
 	idRequest = make(chan *ticketReq)
 	idResponse = make(chan error)
@@ -87,7 +94,7 @@ func orderHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: Display ticket ID and payment options
+	orderTmpl.Execute(w, tck)
 }
 
 func trunc(s string) string {
