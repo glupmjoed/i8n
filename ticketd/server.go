@@ -3,9 +3,11 @@ package main
 import (
 	"flag"
 	"fmt"
+	"html/template"
 	"log"
 	"net/http"
 	"strconv"
+	"time"
 )
 
 type ticketReq struct {
@@ -13,11 +15,13 @@ type ticketReq struct {
 	Time    string
 	Email   string
 	Names   []string
-	Amounts []string
+	Amounts []uint64
 }
 
 const (
-	baseURL = "/"
+	minAmount = 5
+	maxAmount = 10000
+	baseURL   = "/"
 )
 
 func main() {
@@ -41,9 +45,45 @@ func main() {
 
 func orderHandler(w http.ResponseWriter, r *http.Request) {
 
-	// TODO: Parse and validate form data
+	err := r.ParseForm()
+	if err != nil {
+		msg := fmt.Sprintf("error parsing HTML form: %s", err)
+		http.Error(w, msg, http.StatusInternalServerError)
+		return
+	}
+	tck := ticketReq{
+		Time:    time.Now().String(),
+		Email:   template.HTMLEscapeString(trunc(r.Form.Get("email"))),
+		Names:   []string{template.HTMLEscapeString(trunc(r.Form.Get("name1")))},
+		Amounts: make([]uint64, 1),
+	}
+	tck.Amounts[0], err = strconv.ParseUint(r.Form.Get("amount1"), 10, 64)
+	if err != nil || tck.Amounts[0] < minAmount {
+		msg := fmt.Sprintf("Please enter a price >= %d DKK", minAmount)
+		http.Error(w, msg, http.StatusBadRequest)
+		// TODO: Return prettier error message
+		return
+	}
+	if tck.Amounts[0] > maxAmount {
+		msg := fmt.Sprintf("Please enter a price >= %d DKK", maxAmount)
+		http.Error(w, msg, http.StatusBadRequest)
+		// TODO: Return prettier error message
+		return
+	}
+
+	if tck.Email == "" || tck.Names[0] == "" {
+		http.Error(w, "Please provide name and email", http.StatusBadRequest)
+		// TODO: Return prettier error message
+		return
+	}
+
+	// TODO: Implement support for multi-user tickets
 
 	// TODO: Create ticket ID
 
 	// TODO: Display ticket ID and payment options
+}
+
+func trunc(s string) string {
+	return fmt.Sprintf("%.100s", s)
 }
