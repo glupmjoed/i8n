@@ -59,7 +59,7 @@ func orderHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	tck := ticketReq{
-		Time:    time.Now().String(),
+		Time:    time.Now().UTC().Format(time.UnixDate),
 		Email:   template.HTMLEscapeString(trunc(r.Form.Get("email"))),
 		Names:   []string{template.HTMLEscapeString(trunc(r.Form.Get("name1")))},
 		Amounts: make([]uint64, 1),
