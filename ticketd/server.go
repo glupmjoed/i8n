@@ -79,7 +79,13 @@ func orderHandler(w http.ResponseWriter, r *http.Request) {
 
 	// TODO: Implement support for multi-user tickets
 
-	// TODO: Create ticket ID
+	idRequest <- &tck
+	err = <-idResponse
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		// TODO: Return prettier error message
+		return
+	}
 
 	// TODO: Display ticket ID and payment options
 }
