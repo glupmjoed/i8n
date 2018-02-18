@@ -11,7 +11,7 @@ const (
 	base      = 36
 	baseStr   = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 	exDir     = "gen"
-	idLimit   = 500
+	idLimit   = 1000
 	tryCreate = 3
 )
 
