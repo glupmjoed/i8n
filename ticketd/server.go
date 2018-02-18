@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -17,7 +18,8 @@ const (
 func main() {
 
 	flag.Parse()
-	if _, err := strconv.ParseUint(flag.Arg(0), 10, 16); err != nil {
+	port := flag.Arg(0)
+	if _, err := strconv.ParseUint(port, 10, 16); err != nil {
 		log.Fatal("Please provide a valid port number (1st argument)")
 	}
 
@@ -27,7 +29,9 @@ func main() {
 
 	http.HandleFunc(baseURL, http.NotFound)
 	http.HandleFunc(baseURL+"order/", orderHandler)
-	http.ListenAndServe(":"+flag.Arg(0), nil)
+
+	fmt.Println("Serving ticket requests on port", port, "...")
+	http.ListenAndServe(":"+port, nil)
 }
 
 func orderHandler(w http.ResponseWriter, r *http.Request) {
