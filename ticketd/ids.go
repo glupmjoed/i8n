@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -16,13 +17,13 @@ const (
 )
 
 var (
-	idRequest  chan ticketReq
+	idRequest  chan *ticketReq
 	idResponse chan error
 )
 
 func createIDs() {
 	for {
-		_ = <-idRequest
+		r := <-idRequest
 		exists, err := ioutil.ReadDir(exDir)
 		if err != nil {
 			idResponse <- err
@@ -57,9 +58,14 @@ func createIDs() {
 			return
 		}
 
-		// TODO: Create ID on disk (including associated ticket request data)
-
-		idResponse <- nil // TODO: send any relevant ID creation error message
+		r.ID = newID
+		var buf []byte
+		buf, err = json.MarshalIndent(r, "", "  ")
+		if err != nil {
+			idResponse <- err
+		}
+		buf = append(buf, '\n')
+		idResponse <- ioutil.WriteFile(exDir+"/"+newID, buf, 0640)
 	}
 
 }
