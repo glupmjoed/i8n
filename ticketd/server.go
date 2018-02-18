@@ -9,6 +9,11 @@ import (
 )
 
 type ticketReq struct {
+	ID      string
+	Time    string
+	Email   string
+	Names   []string
+	Amounts []string
 }
 
 const (
@@ -23,7 +28,7 @@ func main() {
 		log.Fatal("Please provide a valid port number (1st argument)")
 	}
 
-	idRequest = make(chan ticketReq)
+	idRequest = make(chan *ticketReq)
 	idResponse = make(chan error)
 	go createIDs()
 
