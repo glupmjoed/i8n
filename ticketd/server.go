@@ -41,7 +41,7 @@ func main() {
 
 	idRequest = make(chan *ticketReq)
 	idResponse = make(chan error)
-	go createIDs()
+	go handleIDRequests()
 
 	http.HandleFunc(baseURL, http.NotFound)
 	http.HandleFunc(baseURL+"order/", orderHandler)
@@ -86,8 +86,7 @@ func orderHandler(w http.ResponseWriter, r *http.Request) {
 
 	// TODO: Implement support for multi-user tickets
 
-	idRequest <- &tck
-	err = <-idResponse
+	err = createID(&tck)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		// TODO: Return prettier error message
