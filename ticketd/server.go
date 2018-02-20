@@ -45,6 +45,7 @@ func main() {
 
 	http.HandleFunc(baseURL, http.NotFound)
 	http.HandleFunc(baseURL+"order/", orderHandler)
+	http.HandleFunc(baseURL+"order/stripe.js", stripeJSHandler)
 
 	fmt.Println("Serving ticket requests on port", port, "...")
 	http.ListenAndServe(":"+port, nil)
@@ -94,6 +95,10 @@ func orderHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	orderTmpl.Execute(w, tck)
+}
+
+func stripeJSHandler(w http.ResponseWriter, r *http.Request) {
+	http.ServeFile(w, r, tmplDir+"stripe.js")
 }
 
 func trunc(s string) string {
