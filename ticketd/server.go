@@ -11,11 +11,12 @@ import (
 )
 
 type ticketReq struct {
-	ID      string
-	Time    string
-	Email   string
-	Names   []string
-	Amounts []uint64
+	ID          string
+	Time        string
+	Email       string
+	Names       []string
+	Amounts     []uint64
+	AmountTotal uint64
 }
 
 const (
@@ -84,6 +85,8 @@ func orderHandler(w http.ResponseWriter, r *http.Request) {
 		// TODO: Return prettier error message
 		return
 	}
+
+	tck.AmountTotal = tck.Amounts[0]
 
 	// TODO: Implement support for multi-user tickets
 
