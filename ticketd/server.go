@@ -44,8 +44,11 @@ func main() {
 	idResponse = make(chan error)
 	go handleIDRequests()
 
+	// TODO: Read private API key from configuration file
+
 	http.HandleFunc(baseURL, http.NotFound)
 	http.HandleFunc(baseURL+"order/", orderHandler)
+	http.HandleFunc(baseURL+"pay/", payHandler)
 
 	fmt.Println("Serving ticket requests on port", port, "...")
 	http.ListenAndServe(":"+port, nil)
@@ -97,6 +100,29 @@ func orderHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	orderTmpl.Execute(w, tck)
+}
+
+func payHandler(w http.ResponseWriter, r *http.Request) {
+
+	// TODO: Parse form data (stripe token + ticket ID)
+
+	// TODO: Validate ticket ID
+
+	// TODO: Set private API key
+
+	// TODO: Create charge
+
+	// TODO: Check for success / failure
+
+	// TODO: Confirm livemode
+
+	// TODO: Confirm currency
+
+	// TODO: Confirm amount
+
+	// TODO: Store order
+
+	// TODO: Show order completion confirmation
 }
 
 func trunc(s string) string {
