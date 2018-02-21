@@ -130,7 +130,7 @@ func payHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token := r.Form.Get("stripeToken")
+	token := template.HTMLEscapeString(r.Form.Get("stripeToken"))
 	if token == "" {
 		http.Error(w, "Missing Stripe token. Is JavaScript enabled?",
 			http.StatusBadRequest)
@@ -138,7 +138,7 @@ func payHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ticketID := r.Form.Get("ticket-id")
+	ticketID := template.HTMLEscapeString(r.Form.Get("ticket-id"))
 	if ticketID == "" {
 		http.Error(w, "Missing ticket ID", http.StatusBadRequest)
 		// TODO: Return prettier error message
