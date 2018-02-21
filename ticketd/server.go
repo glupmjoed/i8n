@@ -59,7 +59,7 @@ func main() {
 
 	b, err := ioutil.ReadFile("config/stripe_secret.key")
 	if err != nil {
-		log.Fatal("couldn't read Stripe key: " + err.Error())
+		log.Fatal("Couldn't read Stripe key: " + err.Error())
 	}
 	stripeSecretKey = string(bytes.TrimSpace(b))
 
@@ -85,7 +85,8 @@ func getNameAmountPairs(f url.Values) ([]string, []uint64, error) {
 	var amounts []uint64
 	name, amount := getNameAmountPair(f, 1)
 	if name == "" {
-		msg := "Enter at least one name and an amount >= 5 DKK"
+		msg := fmt.Sprintf("Enter at least one name and an amount >= %d DKK",
+			minAmount)
 		return nil, nil, errors.New(msg)
 	}
 	for i := 2; name != ""; i++ {
@@ -156,8 +157,8 @@ func payHandler(w http.ResponseWriter, r *http.Request) {
 
 	token := template.HTMLEscapeString(r.Form.Get("stripeToken"))
 	if token == "" {
-		http.Error(w, "Missing Stripe token. Is JavaScript enabled?",
-			http.StatusBadRequest)
+		msg := "Missing Stripe token. Make sure that JavaScript is enabled"
+		http.Error(w, msg, http.StatusBadRequest)
 		// TODO: Return prettier error message
 		return
 	}
@@ -194,7 +195,7 @@ func payHandler(w http.ResponseWriter, r *http.Request) {
 
 	charge, chargeErr := charge.New(params)
 	if chargeErr != nil {
-		msg := "non-nil charge error: " + chargeErr.Error()
+		msg := "Payment failed (charge error): " + chargeErr.Error()
 		fmt.Fprintf(os.Stderr, msg)
 		http.Error(w, msg, http.StatusBadRequest)
 		return
