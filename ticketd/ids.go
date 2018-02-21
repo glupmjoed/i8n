@@ -47,12 +47,12 @@ func loadID(id string) (*ticketReq, error) {
 }
 
 func saveTicket(tck *ticketReq) error {
-	buf, err := json.MarshalIndent(r, "", "  ")
+	buf, err := json.MarshalIndent(tck, "", "  ")
 	if err != nil {
 		return err
 	}
 	buf = append(buf, '\n')
-	return ioutil.WriteFile(saveDir+"/"+newID, buf, 0640)
+	return ioutil.WriteFile(saveDir+"/"+tck.ID, buf, 0640)
 }
 
 func unsafeCreateID(r *ticketReq) error {
