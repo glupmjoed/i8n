@@ -11,7 +11,7 @@ import (
 const (
 	base      = 36
 	baseStr   = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-	exDir     = "gen"
+	exDir     = "ex"
 	idLimit   = 1000
 	saveDir   = "save"
 	tryCreate = 3
