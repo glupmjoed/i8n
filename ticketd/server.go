@@ -2,12 +2,14 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"flag"
 	"fmt"
 	"html/template"
 	"io/ioutil"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 	"time"
@@ -69,6 +71,31 @@ func main() {
 	http.ListenAndServe(":"+port, nil)
 }
 
+func getNameAmountPair(f url.Values, n int) (string, uint64) {
+	name := template.HTMLEscapeString(trunc(f.Get(fmt.Sprintf("name%d", n))))
+	amount, err := strconv.ParseUint(f.Get(fmt.Sprintf("amount%d", n)), 10, 64)
+	if err != nil || name == "" || amount < minAmount {
+		return "", 0
+	}
+	return name, amount
+}
+
+func getNameAmountPairs(f url.Values) ([]string, []uint64, error) {
+	var names []string
+	var amounts []uint64
+	name, amount := getNameAmountPair(f, 1)
+	if name == "" {
+		msg := "Enter at least one name and an amount >= 5 DKK"
+		return nil, nil, errors.New(msg)
+	}
+	for i := 2; name != ""; i++ {
+		names = append(names, name)
+		amounts = append(amounts, amount)
+		name, amount = getNameAmountPair(f, i)
+	}
+	return names, amounts, nil
+}
+
 func orderHandler(w http.ResponseWriter, r *http.Request) {
 
 	err := r.ParseForm()
@@ -78,34 +105,31 @@ func orderHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	tck := ticketReq{
-		Time:    time.Now().UTC().Format(time.UnixDate),
-		Email:   template.HTMLEscapeString(trunc(r.Form.Get("email"))),
-		Names:   []string{template.HTMLEscapeString(trunc(r.Form.Get("name1")))},
-		Amounts: make([]uint64, 1),
+		Time:  time.Now().UTC().Format(time.UnixDate),
+		Email: template.HTMLEscapeString(trunc(r.Form.Get("email"))),
 	}
-	tck.Amounts[0], err = strconv.ParseUint(r.Form.Get("amount1"), 10, 64)
-	if err != nil || tck.Amounts[0] < minAmount {
-		msg := fmt.Sprintf("Please enter a price >= %d DKK", minAmount)
-		http.Error(w, msg, http.StatusBadRequest)
-		// TODO: Return prettier error message
-		return
-	}
-	if tck.Amounts[0] > maxAmount {
-		msg := fmt.Sprintf("Please enter a price >= %d DKK", maxAmount)
-		http.Error(w, msg, http.StatusBadRequest)
+
+	tck.Names, tck.Amounts, err = getNameAmountPairs(r.Form)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		// TODO: Return prettier error message
 		return
 	}
 
-	if tck.Email == "" || tck.Names[0] == "" {
-		http.Error(w, "Please provide name and email", http.StatusBadRequest)
+	for _, amount := range tck.Amounts {
+		tck.AmountTotal += amount
+		if amount > maxAmount {
+			msg := fmt.Sprintf("Please enter a price <= %d DKK", maxAmount)
+			http.Error(w, msg, http.StatusBadRequest)
+			// TODO: Return prettier error message
+		}
+	}
+
+	if tck.Email == "" {
+		http.Error(w, "Please provide an email address", http.StatusBadRequest)
 		// TODO: Return prettier error message
 		return
 	}
-
-	tck.AmountTotal = tck.Amounts[0]
-
-	// TODO: Implement support for multi-user tickets
 
 	err = createID(&tck)
 	if err != nil {
