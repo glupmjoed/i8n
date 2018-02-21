@@ -8,6 +8,9 @@ import (
 	"net/http"
 	"strconv"
 	"time"
+
+	"github.com/stripe/stripe-go"
+	"github.com/stripe/stripe-go/charge"
 )
 
 type ticketReq struct {
@@ -27,7 +30,8 @@ const (
 )
 
 var (
-	orderTmpl *template.Template
+	orderTmpl       *template.Template
+	stripeSecretKey string
 )
 
 func main() {
@@ -44,7 +48,11 @@ func main() {
 	idResponse = make(chan error)
 	go handleIDRequests()
 
-	// TODO: Read private API key from configuration file
+	b, err := ioutil.ReadFile("config/stripe_secret.key")
+	if err != nil {
+		log.Fatal("couldn't read Stripe key: " + err.Error())
+	}
+	stripeSecretKey = string(bytes.TrimSpace(b))
 
 	http.HandleFunc(baseURL, http.NotFound)
 	http.HandleFunc(baseURL+"order/", orderHandler)
@@ -103,6 +111,8 @@ func orderHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func payHandler(w http.ResponseWriter, r *http.Request) {
+
+	stripe.Key = stripeSecretKey
 
 	// TODO: Parse form data (stripe token + ticket ID)
 
