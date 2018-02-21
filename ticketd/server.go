@@ -58,7 +58,7 @@ func orderHandler(w http.ResponseWriter, r *http.Request) {
 
 	err := r.ParseForm()
 	if err != nil {
-		msg := fmt.Sprintf("error parsing HTML form: %s", err)
+		msg := fmt.Sprintf("Error parsing HTML form: %s", err)
 		http.Error(w, msg, http.StatusInternalServerError)
 		return
 	}
