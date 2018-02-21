@@ -1,11 +1,14 @@
 package main
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
 	"html/template"
+	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 
@@ -31,6 +34,8 @@ const (
 
 var (
 	orderTmpl       *template.Template
+	payTmpl         *template.Template
+	payFailTmpl     *template.Template
 	stripeSecretKey string
 )
 
@@ -43,6 +48,8 @@ func main() {
 	}
 
 	orderTmpl = template.Must(template.ParseFiles(tmplDir + "order.html"))
+	payTmpl = template.Must(template.ParseFiles(tmplDir + "pay.html"))
+	payFailTmpl = template.Must(template.ParseFiles(tmplDir + "pay_fail.html"))
 
 	idRequest = make(chan *ticketReq)
 	idResponse = make(chan error)
@@ -56,7 +63,7 @@ func main() {
 
 	http.HandleFunc(baseURL, http.NotFound)
 	http.HandleFunc(baseURL+"order/", orderHandler)
-	http.HandleFunc(baseURL+"pay/", payHandler)
+	http.HandleFunc(baseURL+"order/pay/", payHandler)
 
 	fmt.Println("Serving ticket requests on port", port, "...")
 	http.ListenAndServe(":"+port, nil)
@@ -113,26 +120,80 @@ func orderHandler(w http.ResponseWriter, r *http.Request) {
 func payHandler(w http.ResponseWriter, r *http.Request) {
 
 	stripe.Key = stripeSecretKey
+	// TODO: Move key initialization to main function
 
-	// TODO: Parse form data (stripe token + ticket ID)
+	err := r.ParseForm()
+	if err != nil {
+		msg := fmt.Sprintf("Error parsing HTML form: %s", err)
+		http.Error(w, msg, http.StatusInternalServerError)
+		// TODO: Return prettier error message
+		return
+	}
 
-	// TODO: Validate ticket ID
+	token := r.Form.Get("stripeToken")
+	if token == "" {
+		http.Error(w, "Missing Stripe token. Is JavaScript enabled?",
+			http.StatusBadRequest)
+		// TODO: Return prettier error message
+		return
+	}
 
-	// TODO: Set private API key
+	ticketID := r.Form.Get("ticket-id")
+	if ticketID == "" {
+		http.Error(w, "Missing ticket ID", http.StatusBadRequest)
+		// TODO: Return prettier error message
+		return
+	}
 
-	// TODO: Create charge
+	if ticketSaved(ticketID) {
+		http.Error(w, "Ticket is already paid for", http.StatusBadRequest)
+		// TODO: Return prettier error message
+		return
+	}
 
-	// TODO: Check for success / failure
+	var tck *ticketReq
+	tck, err = loadID(ticketID)
+	if err != nil {
+		msg := fmt.Sprintf("Couldn't find ticket ID %s: %s",
+			ticketID, err.Error())
+		http.Error(w, msg, http.StatusInternalServerError)
+	}
 
-	// TODO: Confirm livemode
+	params := &stripe.ChargeParams{
+		Amount:    tck.AmountTotal * 100,
+		Currency:  "dkk",
+		Desc:      tck.ID,
+		Email:     tck.Email,
+		Statement: "Ild i Gilden " + tck.ID,
+	}
+	params.SetSource(token)
 
-	// TODO: Confirm currency
+	charge, chargeErr := charge.New(params)
+	if chargeErr != nil {
+		msg := "non-nil charge error: " + chargeErr.Error()
+		fmt.Fprintf(os.Stderr, msg)
+		http.Error(w, msg, http.StatusBadRequest)
+		return
+	}
 
-	// TODO: Confirm amount
+	if !charge.Paid {
+		msg := "Payment failed: " + charge.FailCode + charge.FailMsg
+		fmt.Fprintf(os.Stderr, msg)
+		http.Error(w, msg, http.StatusBadRequest)
+		return
+	}
 
-	// TODO: Store order
+	if charge.Currency != "dkk" || charge.Amount != tck.AmountTotal*100 {
+		// TODO: Handle non-conforming charges
+	}
 
-	// TODO: Show order completion confirmation
+	err = saveTicket(tck)
+	if err != nil {
+		msg := "Couldn't save ticket: " + err.Error()
+		fmt.Fprintf(os.Stderr, msg)
+	}
+
+	payTmpl.Execute(w, tck)
 }
 
 func trunc(s string) string {
