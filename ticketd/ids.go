@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"time"
 )
 
@@ -53,6 +54,16 @@ func saveTicket(tck *ticketReq) error {
 	}
 	buf = append(buf, '\n')
 	return ioutil.WriteFile(saveDir+"/"+tck.ID, buf, 0640)
+}
+
+func ticketExists(id string) bool {
+	_, err := os.Stat(exDir + "/" + id)
+	return err == nil
+}
+
+func ticketSaved(id string) bool {
+	_, err := os.Stat(saveDir + "/" + id)
+	return err == nil
 }
 
 func unsafeCreateID(r *ticketReq) error {
