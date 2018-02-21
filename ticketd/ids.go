@@ -13,6 +13,7 @@ const (
 	baseStr   = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 	exDir     = "gen"
 	idLimit   = 1000
+	saveDir   = "save"
 	tryCreate = 3
 )
 
@@ -43,6 +44,15 @@ func loadID(id string) (*ticketReq, error) {
 		return nil, err
 	}
 	return &tck, nil
+}
+
+func saveTicket(tck *ticketReq) error {
+	buf, err := json.MarshalIndent(r, "", "  ")
+	if err != nil {
+		return err
+	}
+	buf = append(buf, '\n')
+	return ioutil.WriteFile(saveDir+"/"+newID, buf, 0640)
 }
 
 func unsafeCreateID(r *ticketReq) error {
