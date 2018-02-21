@@ -32,6 +32,19 @@ func handleIDRequests() {
 	}
 }
 
+func loadID(id string) (*ticketReq, error) {
+	buf, err := ioutil.ReadFile(exDir + "/" + id)
+	if err != nil {
+		return nil, err
+	}
+	var tck ticketReq
+	err = json.Unmarshal(buf, &tck)
+	if err != nil {
+		return nil, err
+	}
+	return &tck, nil
+}
+
 func unsafeCreateID(r *ticketReq) error {
 	exists, err := ioutil.ReadDir(exDir)
 	if err != nil {
