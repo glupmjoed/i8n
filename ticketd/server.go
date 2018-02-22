@@ -35,10 +35,9 @@ const (
 )
 
 var (
-	orderTmpl       *template.Template
-	payTmpl         *template.Template
-	payFailTmpl     *template.Template
-	stripeSecretKey string
+	orderTmpl   *template.Template
+	payTmpl     *template.Template
+	payFailTmpl *template.Template
 )
 
 func main() {
@@ -61,7 +60,7 @@ func main() {
 	if err != nil {
 		log.Fatal("Couldn't read Stripe key: " + err.Error())
 	}
-	stripeSecretKey = string(bytes.TrimSpace(b))
+	stripe.Key = string(bytes.TrimSpace(b))
 
 	http.HandleFunc(baseURL, http.NotFound)
 	http.HandleFunc(baseURL+"order/", orderHandler)
@@ -143,9 +142,6 @@ func orderHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func payHandler(w http.ResponseWriter, r *http.Request) {
-
-	stripe.Key = stripeSecretKey
-	// TODO: Move key initialization to main function
 
 	err := r.ParseForm()
 	if err != nil {
