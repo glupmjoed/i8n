@@ -65,7 +65,7 @@ func main() {
 
 	http.HandleFunc(baseURL, http.NotFound)
 	http.HandleFunc(baseURL+"order/", orderHandler)
-	http.HandleFunc(baseURL+"order/pay/", payHandler)
+	http.HandleFunc(baseURL+"pay/", payHandler)
 
 	fmt.Println("Serving ticket requests on port", port, "...")
 	http.ListenAndServe(":"+port, nil)
