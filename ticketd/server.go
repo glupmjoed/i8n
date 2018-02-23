@@ -122,12 +122,13 @@ func orderHandler(w http.ResponseWriter, r *http.Request) {
 
 	for _, amount := range tck.Amounts {
 		tck.AmountTotal += amount
-		if amount > maxAmount {
-			msg := fmt.Sprintf("Please enter a price <= %d DKK", maxAmount)
-			w.WriteHeader(http.StatusBadRequest)
-			orderFailTmpl.Execute(w, msg)
-			return
-		}
+	}
+	if tck.AmountTotal > maxAmount {
+		msg := fmt.Sprintf("Please enter a combined ticket price <= %d DKK",
+			maxAmount)
+		w.WriteHeader(http.StatusBadRequest)
+		orderFailTmpl.Execute(w, msg)
+		return
 	}
 
 	if tck.Email == "" {
