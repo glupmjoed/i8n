@@ -35,9 +35,10 @@ const (
 )
 
 var (
-	orderTmpl   *template.Template
-	payTmpl     *template.Template
-	payFailTmpl *template.Template
+	orderTmpl     *template.Template
+	orderFailTmpl *template.Template
+	payTmpl       *template.Template
+	payFailTmpl   *template.Template
 )
 
 func main() {
@@ -49,6 +50,7 @@ func main() {
 	}
 
 	orderTmpl = template.Must(template.ParseFiles(tmplDir + "order.html"))
+	orderFailTmpl = template.Must(template.ParseFiles(tmplDir + "order_f.html"))
 	payTmpl = template.Must(template.ParseFiles(tmplDir + "pay.html"))
 	payFailTmpl = template.Must(template.ParseFiles(tmplDir + "pay_fail.html"))
 
@@ -101,7 +103,8 @@ func orderHandler(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
 	if err != nil {
 		msg := fmt.Sprintf("Error parsing HTML form: %s", err)
-		http.Error(w, msg, http.StatusInternalServerError)
+		w.WriteHeader(http.StatusInternalServerError)
+		orderFailTmpl.Execute(w, msg)
 		return
 	}
 	tck := ticketReq{
@@ -111,8 +114,9 @@ func orderHandler(w http.ResponseWriter, r *http.Request) {
 
 	tck.Names, tck.Amounts, err = getNameAmountPairs(r.Form)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		// TODO: Return prettier error message
+		w.WriteHeader(http.StatusBadRequest)
+		// TODO: Sanitize error message
+		orderFailTmpl.Execute(w, err.Error())
 		return
 	}
 
@@ -120,21 +124,23 @@ func orderHandler(w http.ResponseWriter, r *http.Request) {
 		tck.AmountTotal += amount
 		if amount > maxAmount {
 			msg := fmt.Sprintf("Please enter a price <= %d DKK", maxAmount)
-			http.Error(w, msg, http.StatusBadRequest)
-			// TODO: Return prettier error message
+			w.WriteHeader(http.StatusBadRequest)
+			orderFailTmpl.Execute(w, msg)
+			return
 		}
 	}
 
 	if tck.Email == "" {
-		http.Error(w, "Please provide an email address", http.StatusBadRequest)
-		// TODO: Return prettier error message
+		w.WriteHeader(http.StatusBadRequest)
+		orderFailTmpl.Execute(w, "Please provide an email address")
 		return
 	}
 
 	err = createID(&tck)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		// TODO: Return prettier error message
+		w.WriteHeader(http.StatusInternalServerError)
+		// TODO: Sanitize error message
+		orderFailTmpl.Execute(w, err.Error())
 		return
 	}
 
@@ -145,39 +151,41 @@ func payHandler(w http.ResponseWriter, r *http.Request) {
 
 	err := r.ParseForm()
 	if err != nil {
-		msg := fmt.Sprintf("Error parsing HTML form: %s", err)
-		http.Error(w, msg, http.StatusInternalServerError)
-		// TODO: Return prettier error message
+		msg := fmt.Sprintf("Couldn't parse HTML form: %s", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		payFailTmpl.Execute(w, msg)
 		return
 	}
 
 	token := template.HTMLEscapeString(r.Form.Get("stripeToken"))
 	if token == "" {
 		msg := "Missing Stripe token. Make sure that JavaScript is enabled"
-		http.Error(w, msg, http.StatusBadRequest)
-		// TODO: Return prettier error message
+		w.WriteHeader(http.StatusBadRequest)
+		payFailTmpl.Execute(w, msg)
 		return
 	}
 
 	ticketID := template.HTMLEscapeString(r.Form.Get("ticket-id"))
 	if ticketID == "" {
-		http.Error(w, "Missing ticket ID", http.StatusBadRequest)
-		// TODO: Return prettier error message
+		w.WriteHeader(http.StatusBadRequest)
+		payFailTmpl.Execute(w, "Missing ticket ID")
 		return
 	}
 
 	if ticketSaved(ticketID) {
-		http.Error(w, "Ticket is already paid for", http.StatusBadRequest)
-		// TODO: Return prettier error message
+		w.WriteHeader(http.StatusBadRequest)
+		payFailTmpl.Execute(w, "Ticket is already paid for")
 		return
 	}
 
 	var tck *ticketReq
 	tck, err = loadID(ticketID)
 	if err != nil {
+		// TODO: Sanitize error message
 		msg := fmt.Sprintf("Couldn't find ticket ID %s: %s",
 			ticketID, err.Error())
-		http.Error(w, msg, http.StatusInternalServerError)
+		w.WriteHeader(http.StatusInternalServerError)
+		payFailTmpl.Execute(w, msg)
 	}
 
 	params := &stripe.ChargeParams{
@@ -191,16 +199,52 @@ func payHandler(w http.ResponseWriter, r *http.Request) {
 
 	charge, chargeErr := charge.New(params)
 	if chargeErr != nil {
-		msg := "Payment failed (charge error): " + chargeErr.Error()
+
+		// TODO: Sanitize error message
+		var errStr string
+		if stripeErr, ok := err.(*stripe.Error); ok {
+			switch stripeErr.Code {
+			case stripe.IncorrectNum:
+				errStr = "IncorrectNum"
+			case stripe.InvalidNum:
+				errStr = "InvalidNum"
+			case stripe.InvalidExpM:
+				errStr = "InvalidExpM"
+			case stripe.InvalidExpY:
+				errStr = "InvalidExpY"
+			case stripe.InvalidCvc:
+				errStr = "InvalidCvc"
+			case stripe.ExpiredCard:
+				errStr = "ExpiredCard"
+			case stripe.IncorrectCvc:
+				errStr = "IncorrectCvc"
+			case stripe.CardDeclined:
+				errStr = "CardDeclined"
+			case stripe.Missing:
+				errStr = "Missing"
+			case stripe.ProcessingErr:
+				errStr = "ProcessingErr"
+			default:
+				errStr = stripeErr.Error()
+			}
+		} else {
+			errStr = chargeErr.Error()
+		}
+		msg := fmt.Sprintf("Payment failed (charge error): %s\n",
+			errStr)
 		fmt.Fprintf(os.Stderr, msg)
-		http.Error(w, msg, http.StatusBadRequest)
+		// TODO: Base HTTP header on error type
+		w.WriteHeader(http.StatusBadRequest)
+		payFailTmpl.Execute(w, msg)
 		return
 	}
 
 	if !charge.Paid {
-		msg := "Payment failed: " + charge.FailCode + charge.FailMsg
+		msg := fmt.Sprintf("Payment failed: %s: %s\n",
+			charge.FailCode, charge.FailMsg)
 		fmt.Fprintf(os.Stderr, msg)
-		http.Error(w, msg, http.StatusBadRequest)
+		w.WriteHeader(http.StatusBadRequest)
+		payFailTmpl.Execute(w, msg)
 		return
 	}
 
@@ -210,8 +254,7 @@ func payHandler(w http.ResponseWriter, r *http.Request) {
 
 	err = saveTicket(tck)
 	if err != nil {
-		msg := "Couldn't save ticket: " + err.Error()
-		fmt.Fprintf(os.Stderr, msg)
+		fmt.Fprintf(os.Stderr, "Couldn't save ticket: %s\n", err.Error())
 	}
 
 	payTmpl.Execute(w, tck)
