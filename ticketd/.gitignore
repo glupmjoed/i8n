@@ -1,4 +1,4 @@
 gen/
 done/
 ticketd
-config/stripe_secret.key
+config/
