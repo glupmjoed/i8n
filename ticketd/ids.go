@@ -13,7 +13,9 @@ const (
 	base      = 36
 	baseStr   = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 	exDir     = "ex"
+	idLen     = 8
 	idLimit   = 1000
+	idPrefix  = "IG18"
 	saveDir   = "save"
 	tryCreate = 3
 )
@@ -79,7 +81,7 @@ func unsafeCreateID(r *ticketReq) error {
 	idExists := false
 	for try := 0; try < tryCreate; try++ {
 		timePrt := time.Now().UnixNano() % (base * base)
-		newID = fmt.Sprintf("IG18%c%c%c%c",
+		newID = fmt.Sprintf(idPrefix+"%c%c%c%c",
 			baseStr[timePrt/base], baseStr[timePrt%base],
 			baseStr[enumPos/base], baseStr[enumPos%base])
 
@@ -106,4 +108,16 @@ func unsafeCreateID(r *ticketReq) error {
 	}
 	buf = append(buf, '\n')
 	return ioutil.WriteFile(exDir+"/"+newID, buf, 0640)
+}
+
+func isValidID(id string) bool {
+	if len(id) != idLen || !strings.HasPrefix(id, idPrefix) {
+		return false
+	}
+	for _, r := range id[len(idPrefix):] {
+		if (r < '0' || '9' < r) && (r < 'A' || 'Z' < r) {
+			return false
+		}
+	}
+	return true
 }
