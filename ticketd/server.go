@@ -35,10 +35,9 @@ const (
 )
 
 var (
-	orderTmpl     *template.Template
-	orderFailTmpl *template.Template
-	payTmpl       *template.Template
-	payFailTmpl   *template.Template
+	failTmpl  *template.Template
+	orderTmpl *template.Template
+	payTmpl   *template.Template
 )
 
 func main() {
@@ -49,10 +48,9 @@ func main() {
 		log.Fatal("Please provide a valid port number (1st argument)")
 	}
 
+	failTmpl = template.Must(template.ParseFiles(tmplDir + "fail.html"))
 	orderTmpl = template.Must(template.ParseFiles(tmplDir + "order.html"))
-	orderFailTmpl = template.Must(template.ParseFiles(tmplDir + "order_f.html"))
 	payTmpl = template.Must(template.ParseFiles(tmplDir + "pay.html"))
-	payFailTmpl = template.Must(template.ParseFiles(tmplDir + "pay_fail.html"))
 
 	idRequest = make(chan *ticketReq)
 	idResponse = make(chan error)
@@ -104,7 +102,7 @@ func orderHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		msg := fmt.Sprintf("Error parsing HTML form: %s", err)
 		w.WriteHeader(http.StatusInternalServerError)
-		orderFailTmpl.Execute(w, msg)
+		failTmpl.Execute(w, msg)
 		return
 	}
 	tck := ticketReq{
@@ -116,7 +114,7 @@ func orderHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		// TODO: Sanitize error message
-		orderFailTmpl.Execute(w, err.Error())
+		failTmpl.Execute(w, err.Error())
 		return
 	}
 
@@ -127,13 +125,13 @@ func orderHandler(w http.ResponseWriter, r *http.Request) {
 		msg := fmt.Sprintf("Please enter a combined ticket price <= %d DKK",
 			maxAmount)
 		w.WriteHeader(http.StatusBadRequest)
-		orderFailTmpl.Execute(w, msg)
+		failTmpl.Execute(w, msg)
 		return
 	}
 
 	if tck.Email == "" {
 		w.WriteHeader(http.StatusBadRequest)
-		orderFailTmpl.Execute(w, "Please provide an email address")
+		failTmpl.Execute(w, "Please provide an email address")
 		return
 	}
 
@@ -141,7 +139,7 @@ func orderHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		// TODO: Sanitize error message
-		orderFailTmpl.Execute(w, err.Error())
+		failTmpl.Execute(w, err.Error())
 		return
 	}
 
@@ -154,7 +152,7 @@ func payHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		msg := fmt.Sprintf("Couldn't parse HTML form: %s", err)
 		w.WriteHeader(http.StatusInternalServerError)
-		payFailTmpl.Execute(w, msg)
+		failTmpl.Execute(w, msg)
 		return
 	}
 
@@ -162,20 +160,20 @@ func payHandler(w http.ResponseWriter, r *http.Request) {
 	if token == "" {
 		msg := "Missing Stripe token. Make sure that JavaScript is enabled"
 		w.WriteHeader(http.StatusBadRequest)
-		payFailTmpl.Execute(w, msg)
+		failTmpl.Execute(w, msg)
 		return
 	}
 
 	ticketID := template.HTMLEscapeString(r.Form.Get("ticket-id"))
 	if ticketID == "" {
 		w.WriteHeader(http.StatusBadRequest)
-		payFailTmpl.Execute(w, "Missing ticket ID")
+		failTmpl.Execute(w, "Missing ticket ID")
 		return
 	}
 
 	if ticketSaved(ticketID) {
 		w.WriteHeader(http.StatusBadRequest)
-		payFailTmpl.Execute(w, "Ticket is already paid for")
+		failTmpl.Execute(w, "Ticket is already paid for")
 		return
 	}
 
@@ -186,7 +184,7 @@ func payHandler(w http.ResponseWriter, r *http.Request) {
 		msg := fmt.Sprintf("Couldn't find ticket ID %s: %s",
 			ticketID, err.Error())
 		w.WriteHeader(http.StatusInternalServerError)
-		payFailTmpl.Execute(w, msg)
+		failTmpl.Execute(w, msg)
 	}
 
 	params := &stripe.ChargeParams{
@@ -236,7 +234,7 @@ func payHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(os.Stderr, msg)
 		// TODO: Base HTTP header on error type
 		w.WriteHeader(http.StatusBadRequest)
-		payFailTmpl.Execute(w, msg)
+		failTmpl.Execute(w, msg)
 		return
 	}
 
@@ -245,7 +243,7 @@ func payHandler(w http.ResponseWriter, r *http.Request) {
 			charge.FailCode, charge.FailMsg)
 		fmt.Fprintf(os.Stderr, msg)
 		w.WriteHeader(http.StatusBadRequest)
-		payFailTmpl.Execute(w, msg)
+		failTmpl.Execute(w, msg)
 		return
 	}
 
