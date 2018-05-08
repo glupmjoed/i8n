@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/stripe/stripe-go"
@@ -262,5 +263,5 @@ func payHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func trunc(s string) string {
-	return fmt.Sprintf("%.100s", s)
+	return strings.TrimSpace(fmt.Sprintf("%.100s", s))
 }
