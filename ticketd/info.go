@@ -35,7 +35,7 @@ func infoConfHandler(w http.ResponseWriter, r *http.Request) {
 		failTmpl.Execute(w, "Server error: Couldn't read passphrase.")
 		return
 	}
-	if string(bytes.TrimSpace(b)) != trunc(r.Form.Get("passphrase")) {
+	if string(bytes.TrimSpace(b)) != r.Form.Get("passphrase") {
 		w.WriteHeader(http.StatusBadRequest)
 		failTmpl.Execute(w, "Wrong passphrase.")
 		return
