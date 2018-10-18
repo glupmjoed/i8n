@@ -1,6 +1,6 @@
 *~
 *.html
 *.pdf
-build/
-content/
-img/
+web/build/
+web/content/
+web/img/
